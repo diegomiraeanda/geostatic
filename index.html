@@ -3,179 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoStatic Clone</title>
+    <title>Geostatic Pro - Clone</title>
     
-    <!-- Links do Mapa (Leaflet) e do Visualizador 360 (Pannellum) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
     
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body, html { height: 100%; overflow: hidden; background: #000; }
+        :root { --primary: #6528e0; --bg: #0a0a0a; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body, html { height: 100%; overflow: hidden; background: var(--bg); color: white; }
 
+        /* MENU DE SELEÇÃO */
+        #menu {
+            position: absolute; inset: 0; background: var(--bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 2000; transition: 0.5s;
+        }
+        .map-card {
+            background: #1a1a1a; padding: 20px; border-radius: 15px; cursor: pointer;
+            width: 300px; text-align: center; margin: 10px; border: 2px solid transparent;
+            transition: 0.3s;
+        }
+        .map-card:hover { border-color: var(--primary); transform: translateY(-5px); }
+
+        /* UI DO JOGO */
         #panorama { width: 100%; height: 100%; }
-
-        #score-board {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 10px 25px;
-            border-radius: 30px;
-            color: #fff;
-            font-weight: bold;
-            font-size: 18px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            border: 1px solid #333;
+        #ui-top {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; display: flex; gap: 20px;
+        }
+        .status-pill {
+            background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px;
+            border: 1px solid #333; font-weight: bold;
         }
 
+        /* MAPA INTERATIVO */
         #map-container {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            width: 320px;
-            height: 240px;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-            transition: width 0.3s ease, height 0.3s ease, opacity 0.2s ease;
-            opacity: 0.8;
-            border: 3px solid #1a1a1a;
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            width: 300px; height: 220px; border-radius: 12px; overflow: hidden;
+            border: 3px solid #1a1a1a; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
-        #map-container:hover {
-            width: 500px;
-            height: 380px;
-            opacity: 1;
-        }
-
+        #map-container:hover { width: 550px; height: 400px; }
         #map { width: 100%; height: 100%; }
 
         #guess-btn {
-            position: absolute;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1001;
-            padding: 10px 20px;
-            background: #6528e0;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            z-index: 1001; padding: 12px 30px; background: var(--primary);
+            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
         }
-        #guess-btn:hover { background: #511bbb; }
+
+        /* TELA DE RESULTADO */
+        #result-screen {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.9);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 3000;
+        }
+        .btn-restart { margin-top: 20px; padding: 15px 40px; background: white; color: black; border-radius: 8px; text-decoration: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="score-board">Pontos: <span id="score">0</span></div>
+    <div id="menu">
+        <h1 style="margin-bottom: 30px;">GEOSTATIC PRO</h1>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
+            <div class="map-card" onclick="startGame('world')">
+                <h3>Mapa Mundi</h3>
+                <p>O mundo inteiro, de Tóquio a Paris.</p>
+            </div>
+            <div class="map-card" onclick="startGame('famous')">
+                <h3>Marcos Famosos</h3>
+                <p>Lugares que todo mundo conhece.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h1>Fim de Jogo!</h1>
+        <p style="font-size: 24px; margin: 10px 0;">Sua pontuação: <span id="final-score">0</span> / 25000</p>
+        <div class="btn-restart" onclick="location.reload()">JOGAR NOVAMENTE</div>
+    </div>
+
+    <div id="ui-top">
+        <div class="status-pill">Round: <span id="round-num">1</span> / 5</div>
+        <div class="status-pill">Score: <span id="current-score">0</span></div>
+    </div>
+
     <div id="panorama"></div>
 
     <div id="map-container">
         <div id="map"></div>
-        <button id="guess-btn" onclick="fazerChute()">CHUTAR</button>
+        <button id="guess-btn" onclick="makeGuess()">CONFIRMAR PALPITE</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
     
     <script>
-        // --- BANCO DE DADOS DOS LOCAIS DO JOGO ---
-        const locais = [
-            {
-                // Local 1: Exemplo Pannellum
-                panoramaUrl: "https://pannellum.org/images/boca-photo.jpg", 
-                latReal: 39.9058,
-                lngReal: 116.3912
-            },
-            {
-                // Local 2: Exemplo Castelo
-                panoramaUrl: "https://pannellum.org/images/alma.jpg",
-                latReal: 37.7749,
-                lngReal: -122.4194
-            }
-        ];
+        // BANCO DE DADOS DE MAPAS
+        const mapPacks = {
+            world: [
+                { url: "https://upload.wikimedia.org/wikipedia/commons/b/b2/Equirectangular_St_Thomas_Square.jpg", lat: 50.6942, lng: -1.2974 },
+                { url: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Arras_panorama_equirectangular.jpg", lat: 50.2911, lng: 2.7812 },
+                { url: "https://upload.wikimedia.org/wikipedia/commons/2/25/Galdar_Plaza_de_Santiago_Equirectangular.jpg", lat: 28.1444, lng: -15.6544 },
+                { url: "https://upload.wikimedia.org/wikipedia/commons/c/c5/Wurzburg_Residenz_Equirectangular_Panorama.jpg", lat: 49.7928, lng: 9.9387 },
+                { url: "https://upload.wikimedia.org/wikipedia/commons/a/a2/St_Louis_Night_Panorama.jpg", lat: 38.6270, lng: -90.1994 }
+            ],
+            famous: [
+                { url: "https://upload.wikimedia.org/wikipedia/commons/c/c5/Wurzburg_Residenz_Equirectangular_Panorama.jpg", lat: 49.7928, lng: 9.9387 },
+                { url: "https://upload.wikimedia.org/wikipedia/commons/b/b2/Equirectangular_St_Thomas_Square.jpg", lat: 50.6942, lng: -1.2974 }
+                // Adicione mais aqui...
+            ]
+        };
 
-        let rodadaAtual = 0;
-        let cliqueUsuario = null;
-        let marcadorUsuario = null;
-        let pontuacaoTotal = 0;
+        let currentPack = [];
+        let round = 0;
+        let totalScore = 0;
+        let userMarker = null;
+        let userClick = null;
         let viewer = null;
 
         const map = L.map('map', { zoomControl: false }).setView([20, 0], 1);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        map.on('click', function(e) {
-            cliqueUsuario = e.latlng;
-            if (marcadorUsuario) {
-                marcadorUsuario.setLatLng(cliqueUsuario);
-            } else {
-                marcadorUsuario = L.marker(cliqueUsuario).addTo(map);
-            }
+        map.on('click', (e) => {
+            userClick = e.latlng;
+            if (userMarker) userMarker.setLatLng(userClick);
+            else userMarker = L.marker(userClick).addTo(map);
         });
 
-        function carregarRodada() {
-            if (rodadaAtual >= locais.length) {
-                alert("Fim de jogo! Sua pontuação final: " + pontuacaoTotal);
-                rodadaAtual = 0;
-                pontuacaoTotal = 0;
-                document.getElementById("score").innerText = pontuacaoTotal;
-            }
-
-            const dadosLocal = locais[rodadaAtual];
-
-            if (viewer) { viewer.destroy(); }
-            
-            viewer = pannellum.viewer('panorama', {
-                type: 'equirectangular',
-                panorama: dadosLocal.panoramaUrl,
-                autoLoad: true,
-                compass: true
-            });
-
-            if (marcadorUsuario) { map.removeLayer(marcadorUsuario); marcadorUsuario = null; }
-            cliqueUsuario = null;
-            map.setView([20, 0], 1);
+        function startGame(packId) {
+            currentPack = [...mapPacks[packId]].sort(() => Math.random() - 0.5);
+            document.getElementById('menu').style.opacity = '0';
+            setTimeout(() => document.getElementById('menu').style.display = 'none', 500);
+            loadRound();
         }
 
-        function fazerChute() {
-            if (!cliqueUsuario) {
-                alert("Dê um palpite no mapa antes de chutar!");
+        function loadRound() {
+            if (round >= 5 || round >= currentPack.length) {
+                showResults();
                 return;
             }
 
-            const localReal = locais[rodadaAtual];
-            const pontoReal = L.latLng(localReal.latReal, localReal.lngReal);
-            const distancia = map.distance(cliqueUsuario, pontoReal) / 1000;
+            document.getElementById('round-num').innerText = round + 1;
+            const loc = currentPack[round];
 
-            let pontosRodada = Math.max(0, Math.round(5000 - (distancia * 0.4)));
-            pontuacaoTotal += pontosRodada;
-            document.getElementById("score").innerText = pontuacaoTotal;
+            if (viewer) viewer.destroy();
+            viewer = pannellum.viewer('panorama', {
+                type: 'equirectangular',
+                panorama: loc.url,
+                autoLoad: true,
+                crossOrigin: 'anonymous'
+            });
 
-            const marcadorReal = L.marker([localReal.latReal, localReal.lngReal], {
-                icon: L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41]
-                })
-            }).addTo(map);
-
-            alert(`Distância: ${Math.round(distancia)} km\nVocê conseguiu ${pontosRodada} pontos!`);
-
-            map.removeLayer(marcadorReal);
-            rodadaAtual++;
-            carregarRodada();
+            if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+            userClick = null;
+            map.setView([20, 0], 1);
         }
 
-        carregarRodada();
+        function makeGuess() {
+            if (!userClick) return alert("Clique no mapa primeiro!");
+
+            const realLoc = currentPack[round];
+            const dist = map.distance(userClick, L.latLng(realLoc.lat, realLoc.lng)) / 1000;
+            
+            let score = Math.max(0, Math.round(5000 * Math.exp(-dist / 2000)));
+            totalScore += score;
+            document.getElementById('current-score').innerText = totalScore;
+
+            alert(`Distância: ${Math.round(dist)}km | Pontos: ${score}`);
+
+            round++;
+            loadRound();
+        }
+
+        function showResults() {
+            document.getElementById('result-screen').style.display = 'flex';
+            document.getElementById('final-score').innerText = totalScore;
+        }
     </script>
 </body>
 </html>
