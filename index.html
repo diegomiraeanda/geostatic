@@ -2,125 +2,58 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geostatic Pro - Clone</title>
-    
+    <title>Geostatic Automático Pro</title>
+    <script src="https://unpkg.com/mapillary-js@4.1.0/dist/mapillary.js"></script>
+    <link href="https://unpkg.com/mapillary-js@4.1.0/dist/mapillary.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
-    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #6528e0; --bg: #0a0a0a; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
-        body, html { height: 100%; overflow: hidden; background: var(--bg); color: white; }
-
-        /* MENU DE SELEÇÃO */
-        #menu {
-            position: absolute; inset: 0; background: var(--bg);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 2000; transition: 0.5s;
-        }
-        .map-card {
-            background: #1a1a1a; padding: 20px; border-radius: 15px; cursor: pointer;
-            width: 300px; text-align: center; margin: 10px; border: 2px solid transparent;
-            transition: 0.3s;
-        }
-        .map-card:hover { border-color: var(--primary); transform: translateY(-5px); }
-
-        /* UI DO JOGO */
-        #panorama { width: 100%; height: 100%; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body, html { height: 100%; overflow: hidden; background: #000; }
+        #mly { width: 100%; height: 100%; }
         #ui-top {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; display: flex; gap: 20px;
+            z-index: 1000; display: flex; gap: 15px;
         }
-        .status-pill {
-            background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px;
-            border: 1px solid #333; font-weight: bold;
-        }
-
-        /* MAPA INTERATIVO */
-        #map-container {
-            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
-            width: 300px; height: 220px; border-radius: 12px; overflow: hidden;
-            border: 3px solid #1a1a1a; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .pill { background: rgba(0,0,0,0.85); color: white; padding: 12px 25px; border-radius: 30px; font-weight: bold; border: 1px solid #444; }
+        #map-container { 
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000; 
+            width: 320px; height: 240px; border-radius: 15px; overflow: hidden; 
+            border: 3px solid white; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         #map-container:hover { width: 550px; height: 400px; }
-        #map { width: 100%; height: 100%; }
-
-        #guess-btn {
-            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1001; padding: 12px 30px; background: var(--primary);
-            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+        #map { width: 100%; height: 100%; background: #ddd; }
+        #guess-btn { 
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 1001;
+            padding: 12px 30px; background: #6528e0; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-
-        /* TELA DE RESULTADO */
-        #result-screen {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.9);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 3000;
-        }
-        .btn-restart { margin-top: 20px; padding: 15px 40px; background: white; color: black; border-radius: 8px; text-decoration: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="menu">
-        <h1 style="margin-bottom: 30px;">GEOSTATIC PRO</h1>
-        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
-            <div class="map-card" onclick="startGame('world')">
-                <h3>Mapa Mundi</h3>
-                <p>O mundo inteiro, de Tóquio a Paris.</p>
-            </div>
-            <div class="map-card" onclick="startGame('famous')">
-                <h3>Marcos Famosos</h3>
-                <p>Lugares que todo mundo conhece.</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="result-screen">
-        <h1>Fim de Jogo!</h1>
-        <p style="font-size: 24px; margin: 10px 0;">Sua pontuação: <span id="final-score">0</span> / 25000</p>
-        <div class="btn-restart" onclick="location.reload()">JOGAR NOVAMENTE</div>
-    </div>
-
     <div id="ui-top">
-        <div class="status-pill">Round: <span id="round-num">1</span> / 5</div>
-        <div class="status-pill">Score: <span id="current-score">0</span></div>
+        <div class="pill">Pontos: <span id="score">0</span></div>
+        <div class="pill" id="status">Procurando local...</div>
     </div>
 
-    <div id="panorama"></div>
+    <div id="mly"></div>
 
     <div id="map-container">
         <div id="map"></div>
-        <button id="guess-btn" onclick="makeGuess()">CONFIRMAR PALPITE</button>
+        <button id="guess-btn" onclick="confirmGuess()">CHUTAR</button>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
-    
     <script>
-        // BANCO DE DADOS DE MAPAS
-        const mapPacks = {
-            world: [
-                { url: "https://upload.wikimedia.org/wikipedia/commons/b/b2/Equirectangular_St_Thomas_Square.jpg", lat: 50.6942, lng: -1.2974 },
-                { url: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Arras_panorama_equirectangular.jpg", lat: 50.2911, lng: 2.7812 },
-                { url: "https://upload.wikimedia.org/wikipedia/commons/2/25/Galdar_Plaza_de_Santiago_Equirectangular.jpg", lat: 28.1444, lng: -15.6544 },
-                { url: "https://upload.wikimedia.org/wikipedia/commons/c/c5/Wurzburg_Residenz_Equirectangular_Panorama.jpg", lat: 49.7928, lng: 9.9387 },
-                { url: "https://upload.wikimedia.org/wikipedia/commons/a/a2/St_Louis_Night_Panorama.jpg", lat: 38.6270, lng: -90.1994 }
-            ],
-            famous: [
-                { url: "https://upload.wikimedia.org/wikipedia/commons/c/c5/Wurzburg_Residenz_Equirectangular_Panorama.jpg", lat: 49.7928, lng: 9.9387 },
-                { url: "https://upload.wikimedia.org/wikipedia/commons/b/b2/Equirectangular_St_Thomas_Square.jpg", lat: 50.6942, lng: -1.2974 }
-                // Adicione mais aqui...
-            ]
-        };
+        // --- SEU TOKEN CONFIGURADO ---
+        const MAPILLARY_TOKEN = 'MLY|26083788811293996|39b21b5a6a8fd65dea5e9f827f832ceb'; 
 
-        let currentPack = [];
-        let round = 0;
-        let totalScore = 0;
-        let userMarker = null;
+        let score = 0;
+        let currentImgPos = { lat: 0, lng: 0 };
         let userClick = null;
-        let viewer = null;
+        let userMarker = null;
+        let mlyViewer = null;
 
         const map = L.map('map', { zoomControl: false }).setView([20, 0], 1);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
@@ -131,55 +64,60 @@
             else userMarker = L.marker(userClick).addTo(map);
         });
 
-        function startGame(packId) {
-            currentPack = [...mapPacks[packId]].sort(() => Math.random() - 0.5);
-            document.getElementById('menu').style.opacity = '0';
-            setTimeout(() => document.getElementById('menu').style.display = 'none', 500);
-            loadRound();
+        async function fetchRandomStreetView() {
+            document.getElementById('status').innerText = "Viajando...";
+            
+            // Tenta achar coordenadas aleatórias em áreas terrestres prováveis
+            const lat = (Math.random() * 120) - 50; 
+            const lng = (Math.random() * 360) - 180;
+
+            const url = `https://graph.mapillary.com/images?access_token=${MAPILLARY_TOKEN}&fields=id,geometry&is_pano=true&bbox=${lng-1},${lat-1},${lng+1},${lat+1}&limit=1`;
+
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+
+                if (json.data && json.data.length > 0) {
+                    const img = json.data[0];
+                    currentImgPos = { lat: img.geometry.coordinates[1], lng: img.geometry.coordinates[0] };
+                    
+                    if (!mlyViewer) {
+                        mlyViewer = new mapillary.Viewer({
+                            accessToken: MAPILLARY_TOKEN,
+                            container: 'mly',
+                            imageId: img.id,
+                        });
+                    } else {
+                        mlyViewer.moveTo(img.id);
+                    }
+                    document.getElementById('status').innerText = "Onde você está?";
+                } else {
+                    fetchRandomStreetView(); 
+                }
+            } catch (err) {
+                console.error(err);
+                fetchRandomStreetView();
+            }
         }
 
-        function loadRound() {
-            if (round >= 5 || round >= currentPack.length) {
-                showResults();
-                return;
-            }
+        function confirmGuess() {
+            if (!userClick) return alert("Marque um lugar no mapa!");
+            
+            const realPos = L.latLng(currentImgPos.lat, currentImgPos.lng);
+            const dist = map.distance(userClick, realPos) / 1000;
+            
+            let points = Math.max(0, Math.round(5000 * Math.exp(-dist / 2000)));
+            score += points;
+            document.getElementById('score').innerText = score;
 
-            document.getElementById('round-num').innerText = round + 1;
-            const loc = currentPack[round];
-
-            if (viewer) viewer.destroy();
-            viewer = pannellum.viewer('panorama', {
-                type: 'equirectangular',
-                panorama: loc.url,
-                autoLoad: true,
-                crossOrigin: 'anonymous'
-            });
-
+            alert(`Distância: ${Math.round(dist)}km\nPontos: ${points}`);
+            
             if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
             userClick = null;
-            map.setView([20, 0], 1);
+            fetchRandomStreetView();
         }
 
-        function makeGuess() {
-            if (!userClick) return alert("Clique no mapa primeiro!");
-
-            const realLoc = currentPack[round];
-            const dist = map.distance(userClick, L.latLng(realLoc.lat, realLoc.lng)) / 1000;
-            
-            let score = Math.max(0, Math.round(5000 * Math.exp(-dist / 2000)));
-            totalScore += score;
-            document.getElementById('current-score').innerText = totalScore;
-
-            alert(`Distância: ${Math.round(dist)}km | Pontos: ${score}`);
-
-            round++;
-            loadRound();
-        }
-
-        function showResults() {
-            document.getElementById('result-screen').style.display = 'flex';
-            document.getElementById('final-score').innerText = totalScore;
-        }
+        fetchRandomStreetView();
     </script>
 </body>
 </html>
