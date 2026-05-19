@@ -10,24 +10,23 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body, html { height: 100%; overflow: hidden; background: #000; }
-        #mly { width: 100%; height: 100%; }
+        #mly { width: 100%; height: 100%; background: #050505; }
         #ui-top {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; display: flex; gap: 15px;
+            z-index: 1000; display: flex; gap: 15px; width: 100%; justify-content: center;
         }
         .pill { background: rgba(0,0,0,0.85); color: white; padding: 12px 25px; border-radius: 30px; font-weight: bold; border: 1px solid #444; }
         #map-container { 
             position: absolute; bottom: 20px; right: 20px; z-index: 1000; 
-            width: 320px; height: 240px; border-radius: 15px; overflow: hidden; 
-            border: 3px solid white; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 300px; height: 220px; border-radius: 15px; overflow: hidden; 
+            border: 3px solid white; transition: 0.3s ease-in-out;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        #map-container:hover { width: 550px; height: 400px; }
-        #map { width: 100%; height: 100%; background: #ddd; }
+        #map-container:hover { width: 500px; height: 380px; }
+        #map { width: 100%; height: 100%; }
         #guess-btn { 
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 1001;
             padding: 12px 30px; background: #6528e0; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -35,7 +34,7 @@
 
     <div id="ui-top">
         <div class="pill">Pontos: <span id="score">0</span></div>
-        <div class="pill" id="status">Procurando local...</div>
+        <div class="pill" id="status">Iniciando viagem...</div>
     </div>
 
     <div id="mly"></div>
@@ -46,7 +45,6 @@
     </div>
 
     <script>
-        // --- SEU TOKEN CONFIGURADO ---
         const MAPILLARY_TOKEN = 'MLY|26083788811293996|39b21b5a6a8fd65dea5e9f827f832ceb'; 
 
         let score = 0;
@@ -64,14 +62,22 @@
             else userMarker = L.marker(userClick).addTo(map);
         });
 
+        // Áreas com muita cobertura (Brasil, EUA, Europa, Japão)
+        const hotspots = [
+            {minLat: -30, maxLat: -5, minLng: -60, maxLng: -35}, // Brasil
+            {minLat: 35, maxLat: 50, minLng: -120, maxLng: -75}, // EUA
+            {minLat: 40, maxLat: 60, minLng: -10, maxLng: 30},   // Europa
+            {minLat: 30, maxLat: 45, minLng: 130, maxLng: 145}   // Japão
+        ];
+
         async function fetchRandomStreetView() {
             document.getElementById('status').innerText = "Viajando...";
             
-            // Tenta achar coordenadas aleatórias em áreas terrestres prováveis
-            const lat = (Math.random() * 120) - 50; 
-            const lng = (Math.random() * 360) - 180;
+            const area = hotspots[Math.floor(Math.random() * hotspots.length)];
+            const lat = Math.random() * (area.maxLat - area.minLat) + area.minLat;
+            const lng = Math.random() * (area.maxLng - area.minLng) + area.minLng;
 
-            const url = `https://graph.mapillary.com/images?access_token=${MAPILLARY_TOKEN}&fields=id,geometry&is_pano=true&bbox=${lng-1},${lat-1},${lng+1},${lat+1}&limit=1`;
+            const url = `https://graph.mapillary.com/images?access_token=${MAPILLARY_TOKEN}&fields=id,geometry&is_pano=true&bbox=${lng-2},${lat-2},${lng+2},${lat+2}&limit=1`;
 
             try {
                 const res = await fetch(url);
@@ -86,17 +92,17 @@
                             accessToken: MAPILLARY_TOKEN,
                             container: 'mly',
                             imageId: img.id,
+                            component: { cover: false, direction: true }
                         });
                     } else {
-                        mlyViewer.moveTo(img.id);
+                        mlyViewer.moveTo(img.id).catch(() => fetchRandomStreetView());
                     }
                     document.getElementById('status').innerText = "Onde você está?";
                 } else {
-                    fetchRandomStreetView(); 
+                    setTimeout(fetchRandomStreetView, 500); 
                 }
             } catch (err) {
-                console.error(err);
-                fetchRandomStreetView();
+                setTimeout(fetchRandomStreetView, 1000);
             }
         }
 
@@ -106,7 +112,7 @@
             const realPos = L.latLng(currentImgPos.lat, currentImgPos.lng);
             const dist = map.distance(userClick, realPos) / 1000;
             
-            let points = Math.max(0, Math.round(5000 * Math.exp(-dist / 2000)));
+            let points = Math.max(0, Math.round(5000 * Math.exp(-dist / 1500)));
             score += points;
             document.getElementById('score').innerText = score;
 
@@ -117,7 +123,8 @@
             fetchRandomStreetView();
         }
 
-        fetchRandomStreetView();
+        // Aguarda carregar tudo antes de iniciar
+        window.onload = fetchRandomStreetView;
     </script>
 </body>
 </html>
