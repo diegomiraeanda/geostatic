@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoStatic Clone</title>
+    
+    <!-- Links do Mapa (Leaflet) e do Visualizador 360 (Pannellum) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body, html { height: 100%; overflow: hidden; background: #000; }
+
+        #panorama { width: 100%; height: 100%; }
+
+        #score-board {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 25px;
+            border-radius: 30px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        #map-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 320px;
+            height: 240px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            transition: width 0.3s ease, height 0.3s ease, opacity 0.2s ease;
+            opacity: 0.8;
+            border: 3px solid #1a1a1a;
+        }
+
+        #map-container:hover {
+            width: 500px;
+            height: 380px;
+            opacity: 1;
+        }
+
+        #map { width: 100%; height: 100%; }
+
+        #guess-btn {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            padding: 10px 20px;
+            background: #6528e0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #guess-btn:hover { background: #511bbb; }
+    </style>
+</head>
+<body>
+
+    <div id="score-board">Pontos: <span id="score">0</span></div>
+    <div id="panorama"></div>
+
+    <div id="map-container">
+        <div id="map"></div>
+        <button id="guess-btn" onclick="fazerChute()">CHUTAR</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+    
+    <script>
+        // --- BANCO DE DADOS DOS LOCAIS DO JOGO ---
+        const locais = [
+            {
+                // Local 1: Exemplo Pannellum
+                panoramaUrl: "https://pannellum.org/images/boca-photo.jpg", 
+                latReal: 39.9058,
+                lngReal: 116.3912
+            },
+            {
+                // Local 2: Exemplo Castelo
+                panoramaUrl: "https://pannellum.org/images/alma.jpg",
+                latReal: 37.7749,
+                lngReal: -122.4194
+            }
+        ];
+
+        let rodadaAtual = 0;
+        let cliqueUsuario = null;
+        let marcadorUsuario = null;
+        let pontuacaoTotal = 0;
+        let viewer = null;
+
+        const map = L.map('map', { zoomControl: false }).setView([20, 0], 1);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        map.on('click', function(e) {
+            cliqueUsuario = e.latlng;
+            if (marcadorUsuario) {
+                marcadorUsuario.setLatLng(cliqueUsuario);
+            } else {
+                marcadorUsuario = L.marker(cliqueUsuario).addTo(map);
+            }
+        });
+
+        function carregarRodada() {
+            if (rodadaAtual >= locais.length) {
+                alert("Fim de jogo! Sua pontuação final: " + pontuacaoTotal);
+                rodadaAtual = 0;
+                pontuacaoTotal = 0;
+                document.getElementById("score").innerText = pontuacaoTotal;
+            }
+
+            const dadosLocal = locais[rodadaAtual];
+
+            if (viewer) { viewer.destroy(); }
+            
+            viewer = pannellum.viewer('panorama', {
+                type: 'equirectangular',
+                panorama: dadosLocal.panoramaUrl,
+                autoLoad: true,
+                compass: true
+            });
+
+            if (marcadorUsuario) { map.removeLayer(marcadorUsuario); marcadorUsuario = null; }
+            cliqueUsuario = null;
+            map.setView([20, 0], 1);
+        }
+
+        function fazerChute() {
+            if (!cliqueUsuario) {
+                alert("Dê um palpite no mapa antes de chutar!");
+                return;
+            }
+
+            const localReal = locais[rodadaAtual];
+            const pontoReal = L.latLng(localReal.latReal, localReal.lngReal);
+            const distancia = map.distance(cliqueUsuario, pontoReal) / 1000;
+
+            let pontosRodada = Math.max(0, Math.round(5000 - (distancia * 0.4)));
+            pontuacaoTotal += pontosRodada;
+            document.getElementById("score").innerText = pontuacaoTotal;
+
+            const marcadorReal = L.marker([localReal.latReal, localReal.lngReal], {
+                icon: L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41]
+                })
+            }).addTo(map);
+
+            alert(`Distância: ${Math.round(distancia)} km\nVocê conseguiu ${pontosRodada} pontos!`);
+
+            map.removeLayer(marcadorReal);
+            rodadaAtual++;
+            carregarRodada();
+        }
+
+        carregarRodada();
+    </script>
+</body>
+</html>
